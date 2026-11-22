@@ -1,5 +1,5 @@
-import { BANKS, INCOME_COPY, POLICY } from '../config/policy'
-import { isLoanAmountOption } from '../config/pricing'
+import { BANKS, INCOME_COPY, POLICY, isRepaymentSource } from '../config/policy'
+import { isLoanAmountOption, isTenureOption } from '../config/pricing'
 import { ageOn, parseISODate } from '../lib/date'
 import type { AppState, Bank, Consents, Income, LoanRequest, Personal, ScreenId, Student } from './types'
 
@@ -34,12 +34,15 @@ export function validateAccountNumber(account: string): string | undefined {
 
 const normaliseName = (name: string) => name.trim().toLowerCase().replace(/\s+/g, ' ')
 
-export function validateLoan(loan: LoanRequest): Errors<'amount' | 'purpose' | 'purposeNote'> {
-  const errors: Errors<'amount' | 'purpose' | 'purposeNote'> = {}
+export type LoanKey = 'amount' | 'purpose' | 'purposeNote' | 'tenure'
+
+export function validateLoan(loan: LoanRequest): Errors<LoanKey> {
+  const errors: Errors<LoanKey> = {}
   // Only the predefined options are accepted — never an arbitrary amount.
   if (!isLoanAmountOption(loan.amount)) errors.amount = 'Choose a loan amount'
   if (!loan.purpose) errors.purpose = 'Select the main purpose of the loan'
   if (loan.purpose === 'Other' && loan.purposeNote.trim().length < 3) errors.purposeNote = 'Tell us briefly what the loan is for'
+  if (!isTenureOption(loan.tenure)) errors.tenure = 'Choose a repayment tenure'
   return errors
 }
 
@@ -80,16 +83,33 @@ export function validateStudent(student: Student): Errors<StudentKey> {
   return errors
 }
 
-export type IncomeKey = 'hasIncome' | 'source' | 'organisation' | 'monthlyAmount' | 'startDate' | 'endDate'
+export type IncomeKey =
+  | 'hasIncome'
+  | 'source'
+  | 'organisation'
+  | 'monthlyAmount'
+  | 'startDate'
+  | 'endDate'
+  | 'repaymentSource'
+  | 'repaymentNote'
 
-/** Hidden fields are never validated — a student without income can always continue. */
+/**
+ * Hidden fields are never validated. A student without income is never blocked for
+ * that — they only answer how they plan to repay.
+ */
 export function validateIncome(income: Income, now = new Date()): Errors<IncomeKey> {
   const errors: Errors<IncomeKey> = {}
   if (!income.hasIncome) {
     errors.hasIncome = 'Choose an option to continue'
     return errors
   }
-  if (income.hasIncome === 'no') return errors
+  if (income.hasIncome === 'no') {
+    if (!isRepaymentSource(income.repaymentSource)) errors.repaymentSource = 'Choose how you plan to repay'
+    else if (income.repaymentSource === 'Other' && income.repaymentNote.trim().length < 3) {
+      errors.repaymentNote = 'Tell us briefly how you’ll repay'
+    }
+    return errors
+  }
   if (!income.source) {
     errors.source = 'Select your source of income'
     return errors

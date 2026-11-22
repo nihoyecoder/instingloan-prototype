@@ -41,8 +41,10 @@ export function emiFormula(principal: number, annualRatePercent: number, months:
  * principal column always adds up to the loan amount exactly. Every total shown
  * in the app is derived from this one schedule, so the figures always reconcile.
  */
-export function buildRepaymentPlan(amount: number, tenure: number, pricing: Pricing = PRICING): RepaymentPlan {
+export function buildRepaymentPlan(amount: number, months: number | null, pricing: Pricing = PRICING): RepaymentPlan {
   const principal = Math.max(0, Math.round(amount))
+  // No tenure chosen yet → an empty plan (tenure 0), never a calculation over "null" months.
+  const tenure = months ?? 0
   const r = pricing.annualRatePercent / 12 / 100
   const processingFee = pricing.processingFee
   const gstOnFee = Math.round((processingFee * pricing.gstOnFeePercent) / 100)

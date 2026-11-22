@@ -53,19 +53,32 @@ export function RadioCards<T extends string>({
   options,
   onChange,
   labelledBy,
+  describedBy,
   invalid,
   id,
+  stacked,
 }: {
   name: string
   value: T | ''
   options: Array<Choice<T>>
   onChange: (value: T) => void
   labelledBy?: string
+  describedBy?: string
   invalid?: boolean
   id?: string
+  /** One full-width card per row (for longer option lists). */
+  stacked?: boolean
 }) {
   return (
-    <div id={id} role="radiogroup" aria-labelledby={labelledBy} tabIndex={-1} className="flex flex-wrap gap-3 outline-none">
+    <div
+      id={id}
+      role="radiogroup"
+      aria-labelledby={labelledBy}
+      aria-describedby={describedBy}
+      aria-invalid={invalid || undefined}
+      tabIndex={-1}
+      className={cn('flex gap-3 outline-none', stacked ? 'flex-col gap-2' : 'flex-wrap')}
+    >
       {options.map((option) => {
         const selected = value === option.value
         return (
@@ -73,6 +86,7 @@ export function RadioCards<T extends string>({
             key={option.value}
             className={cn(
               'flex cursor-pointer items-center gap-1 rounded-12 border p-2 transition-colors duration-150 has-[:focus-visible]:shadow-[0_0_0_2px_var(--color-ink)]',
+              stacked && 'w-full',
               selected ? 'border-lime bg-lime-tint' : invalid ? 'border-danger bg-card' : 'border-line bg-card hover:bg-canvas',
             )}
           >
@@ -87,7 +101,7 @@ export function RadioCards<T extends string>({
             <span aria-hidden className="relative size-[15px] shrink-0">
               <Icon icon={selected ? icons.radioOn : icons.radioOff} className="absolute left-[1.26px] top-[1.26px]" />
             </span>
-            <span className={cn('whitespace-nowrap text-[11px] leading-[14px] text-ink', selected ? 'font-bold' : 'font-normal')}>
+            <span className={cn('text-[11px] leading-[14px] text-ink', stacked ? 'min-w-0 flex-1' : 'whitespace-nowrap', selected ? 'font-bold' : 'font-normal')}>
               {option.label}
             </span>
           </label>
@@ -103,15 +117,30 @@ export function TenureChips<T extends number>({
   onChange,
   label,
   format,
+  id,
+  invalid,
+  describedBy,
 }: {
-  value: T
+  /** null until the student picks a tenure. */
+  value: T | null
   options: readonly T[]
   onChange: (value: T) => void
   label: string
   format: (value: T) => string
+  id?: string
+  invalid?: boolean
+  describedBy?: string
 }) {
   return (
-    <div role="radiogroup" aria-label={label} className="flex w-full gap-2">
+    <div
+      id={id}
+      role="radiogroup"
+      aria-label={label}
+      aria-invalid={invalid || undefined}
+      aria-describedby={describedBy}
+      tabIndex={-1}
+      className="flex w-full gap-2 outline-none"
+    >
       {options.map((option) => {
         const selected = option === value
         return (
@@ -122,8 +151,8 @@ export function TenureChips<T extends number>({
             aria-checked={selected}
             onClick={() => onChange(option)}
             className={cn(
-              'min-w-0 flex-1 rounded-full border-[0.7px] border-line p-2 text-center text-[11px] leading-[14px] text-ink transition-colors duration-150',
-              selected ? 'bg-lime font-bold' : 'bg-card font-normal hover:bg-canvas',
+              'min-w-0 flex-1 rounded-full border-[0.7px] p-2 text-center text-[11px] leading-[14px] text-ink transition-colors duration-150',
+              selected ? 'border-line bg-lime font-bold' : invalid ? 'border-danger bg-card font-normal' : 'border-line bg-card font-normal hover:bg-canvas',
             )}
           >
             {format(option)}
@@ -147,6 +176,7 @@ export function AmountOptions<T extends number>({
   id,
   labelledBy,
   describedBy,
+  invalid,
   columns = 3,
 }: {
   value: number
@@ -156,6 +186,7 @@ export function AmountOptions<T extends number>({
   id?: string
   labelledBy?: string
   describedBy?: string
+  invalid?: boolean
   columns?: number
 }) {
   const refs = useRef<Array<HTMLButtonElement | null>>([])
@@ -170,7 +201,9 @@ export function AmountOptions<T extends number>({
       role="radiogroup"
       aria-labelledby={labelledBy}
       aria-describedby={describedBy}
-      className="grid w-full gap-2"
+      aria-invalid={invalid || undefined}
+      tabIndex={-1}
+      className="grid w-full gap-2 outline-none"
       style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}
     >
       {options.map((option, index) => {
@@ -196,7 +229,7 @@ export function AmountOptions<T extends number>({
             }}
             className={cn(
               'flex h-10 min-w-0 items-center justify-center gap-1 rounded-12 border-[0.7px] px-1 text-[12px] leading-[15px] text-ink outline-none transition-colors duration-150 focus-visible:shadow-[0_0_0_2px_var(--color-ink)]',
-              selected ? 'border-ink bg-lime font-bold' : 'border-line bg-card font-normal hover:bg-canvas',
+              selected ? 'border-ink bg-lime font-bold' : invalid ? 'border-danger bg-card font-normal' : 'border-line bg-card font-normal hover:bg-canvas',
             )}
           >
             {selected && <Check aria-hidden className="size-3 shrink-0 animate-pop-in" strokeWidth={3} />}

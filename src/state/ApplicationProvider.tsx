@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useReducer, useRef, type ReactNode } from 'react'
 import { POLICY } from '../config/policy'
-import { isLoanAmountOption } from '../config/pricing'
+import { isLoanAmountOption, isTenureOption } from '../config/pricing'
 import { addMonths } from '../lib/date'
 import { buildRepaymentPlan } from '../lib/loan'
 import {
@@ -105,9 +105,14 @@ function loadState(): AppState {
       documents,
       application: { ...initial.application, ...saved.application },
     }
-    // Drafts saved before amounts became fixed options may hold a typed amount — ask again.
-    // (A submitted application keeps the amount it was submitted with.)
-    if (!merged.submission && !isLoanAmountOption(merged.loan.amount)) merged.loan = { ...merged.loan, amount: 0 }
+    // An amount that's no longer offered (an older typed amount, or above today's maximum):
+    // a draft asks for the amount again; a submitted demo application starts fresh.
+    if (!isLoanAmountOption(merged.loan.amount)) {
+      if (merged.submission) return initial
+      merged.loan = { ...merged.loan, amount: 0 }
+    }
+    // A tenure that isn't offered (or missing) means the student chooses again.
+    if (!isTenureOption(merged.loan.tenure)) merged.loan = { ...merged.loan, tenure: null }
     // A check that was running when the page closed never finished.
     if (merged.kyc.panStatus === 'checking') merged.kyc = { ...merged.kyc, panStatus: 'idle', panMasked: '' }
     if (merged.bank.verification === 'checking') merged.bank = { ...merged.bank, verification: 'idle' }

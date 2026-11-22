@@ -5,12 +5,12 @@ import { PageNav } from '../components/PageNav'
 import { RepaymentSheet } from '../components/Repayment'
 import { ScreenLayout, StepFooter, focusFirstError } from '../components/ScreenLayout'
 import { LOAN_PURPOSES } from '../config/policy'
-import { PRICING } from '../config/pricing'
+import { MAX_REQUEST_AMOUNT, PRICING, isLoanAmountOption } from '../config/pricing'
 import { cn } from '../lib/cn'
 import { formatINR } from '../lib/format'
 import { useApplication } from '../state/ApplicationProvider'
-import { repaymentPlan, tenureLabel } from '../state/selectors'
-import { hasErrors, validateLoan } from '../state/validation'
+import { hasEstimate, repaymentPlan, tenureLabel } from '../state/selectors'
+import { hasErrors, validateLoan, type LoanKey } from '../state/validation'
 import { AmountOptions, TenureChips } from '../ui/Controls'
 import { FieldError, TextField, inputShell } from '../ui/Field'
 import { InfoTip } from '../ui/InfoTip'
@@ -73,18 +73,19 @@ export function LoanDetailsScreen() {
   const [sheet, setSheet] = useState<'purpose' | 'breakdown' | 'help' | null>(null)
 
   const errors = validateLoan(loan)
+  const show = (key: LoanKey) => (attempted ? errors[key] : undefined)
   const plan = repaymentPlan(loan)
-  // Continue, the estimate and the breakdown all wait for an explicit amount choice.
-  const amountSelected = !errors.amount
-  const estimateReady = amountSelected
+  // The estimate and the breakdown wait until both an amount and a tenure are chosen.
+  const estimateReady = hasEstimate(loan)
 
   const onContinue = () => {
-    if (!amountSelected) return
     setAttempted(true)
     if (hasErrors(errors)) {
       const order = [
+        ['amount', 'loan-amount'],
         ['purpose', 'loan-purpose'],
         ['purposeNote', 'loan-purpose-note'],
+        ['tenure', 'loan-tenure'],
       ] as const
       focusFirstError(order.filter(([key]) => errors[key]).map(([, id]) => id))
       return
@@ -105,7 +106,7 @@ export function LoanDetailsScreen() {
       }
       step={1}
       contentClassName="pt-6 pb-6"
-      footer={<StepFooter onContinue={onContinue} disabled={!amountSelected} />}
+      footer={<StepFooter onContinue={onContinue} />}
     >
       <div className="flex flex-col gap-1">
         <h1 className="text-heading-page text-ink">Loan details</h1>
@@ -121,24 +122,21 @@ export function LoanDetailsScreen() {
           helper="Select an amount that suits your immediate financial needs."
           labelId="loan-amount-label"
           topic="loan amount"
-          why="We use the amount you choose and your repayment preference to calculate an estimated loan offer. Amounts are fixed options in this prototype."
+          why={`We use the amount you choose and your repayment preference to calculate an estimated loan offer. You can request up to ${formatINR(MAX_REQUEST_AMOUNT)} — that isn’t a guaranteed or approved amount.`}
         >
           <div className="pt-1">
             <AmountOptions
               id="loan-amount"
               labelledBy="loan-amount-label"
-              describedBy={amountSelected ? undefined : 'loan-amount-hint'}
+              describedBy={show('amount') ? 'loan-amount-error' : undefined}
+              invalid={Boolean(show('amount'))}
               value={loan.amount}
               options={PRICING.amountOptions}
               onChange={(amount) => actions.updateLoan({ amount })}
               format={formatINR}
             />
           </div>
-          {!amountSelected && (
-            <p id="loan-amount-hint" className="text-[10px] leading-[13px] text-muted">
-              Select an amount to continue.
-            </p>
-          )}
+          <FieldError id="loan-amount-error">{show('amount')}</FieldError>
         </FormRow>
 
         <FormRow
@@ -154,11 +152,12 @@ export function LoanDetailsScreen() {
             onClick={() => setSheet('purpose')}
             aria-haspopup="dialog"
             aria-labelledby="loan-purpose-label loan-purpose"
-            aria-invalid={attempted && errors.purpose ? true : undefined}
+            aria-invalid={show('purpose') ? true : undefined}
+            aria-describedby={show('purpose') ? 'loan-purpose-error' : undefined}
             className={cn(
               inputShell,
               'h-8 gap-2 p-2 text-left outline-none hover:border-[#c9cdc4] focus-visible:border-ink focus-visible:shadow-[0_0_0_3px_rgba(210,243,107,0.6)]',
-              attempted && errors.purpose ? 'border-danger' : 'border-line',
+              show('purpose') ? 'border-danger' : 'border-line',
             )}
           >
             <span className={cn('min-w-0 flex-1 truncate text-[12px] leading-[15px]', loan.purpose ? 'text-ink' : 'text-muted')}>
@@ -168,7 +167,7 @@ export function LoanDetailsScreen() {
               <Icon icon={icons.selectChevron} />
             </span>
           </button>
-          <FieldError id="loan-purpose-error">{attempted ? errors.purpose : undefined}</FieldError>
+          <FieldError id="loan-purpose-error">{show('purpose')}</FieldError>
           {loan.purpose === 'Other' && (
             <TextField
               id="loan-purpose-note"
@@ -178,7 +177,7 @@ export function LoanDetailsScreen() {
               onValueChange={(purposeNote) => actions.updateLoan({ purposeNote })}
               placeholder="e.g. Field trip for my course"
               maxLength={80}
-              error={attempted ? errors.purposeNote : undefined}
+              error={show('purposeNote')}
               className="animate-fade-in pt-1"
             />
           )}
@@ -192,12 +191,16 @@ export function LoanDetailsScreen() {
           why="A longer tenure lowers each monthly instalment but increases the total interest you pay."
         >
           <TenureChips
+            id="loan-tenure"
             label="Preferred repayment tenure"
             value={loan.tenure}
             options={PRICING.tenureOptions}
             onChange={(tenure) => actions.updateLoan({ tenure })}
             format={tenureLabel}
+            invalid={Boolean(show('tenure'))}
+            describedBy={show('tenure') ? 'loan-tenure-error' : undefined}
           />
+          <FieldError id="loan-tenure-error">{show('tenure')}</FieldError>
         </FormRow>
       </div>
 
@@ -218,13 +221,14 @@ export function LoanDetailsScreen() {
           </div>
         </div>
         <dl className="grid grid-cols-3 gap-x-2 gap-y-3" aria-live="polite">
-          <Term label="Loan amount" value={estimateReady ? formatINR(plan.principal) : '—'} />
+          <Term label="Loan amount" value={isLoanAmountOption(loan.amount) ? formatINR(loan.amount) : '—'} />
           <Term label="Est. interest (p.a.)" value={`${PRICING.annualRatePercent}%`} />
-          <Term label={`Est. EMI (${tenureLabel(loan.tenure)})`} value={estimateReady ? formatINR(plan.emi) : '—'} />
+          <Term label={loan.tenure ? `Est. EMI (${tenureLabel(loan.tenure)})` : 'Est. EMI'} value={estimateReady ? formatINR(plan.emi) : '—'} />
           <Term label="Total interest" value={estimateReady ? formatINR(plan.totalInterest) : '—'} />
           <Term label="Processing fee" value={formatINR(plan.processingFee + plan.gstOnFee)} />
           <Term label="Total repayment" value={estimateReady ? formatINR(plan.totalRepayment) : '—'} />
         </dl>
+        {!estimateReady && <p className="text-[10px] leading-[13px] text-muted">Choose an amount and tenure to see your estimate</p>}
         <button
           type="button"
           onClick={() => setSheet('breakdown')}
@@ -252,8 +256,9 @@ export function LoanDetailsScreen() {
           {PRICING.annualRatePercent}% p.a. rate with interest charged monthly on the reducing balance.
         </p>
         <p>
-          It’s an illustrative prototype calculation, not an approved offer. The amount options aren’t lender limits, and your
-          final terms depend on the lender’s assessment.
+          It’s an illustrative prototype calculation, not an approved offer. You can request up to{' '}
+          {formatINR(MAX_REQUEST_AMOUNT)}; the amount you’re eligible for and your final terms depend on the lender’s
+          assessment.
         </p>
       </HelpSheet>
     </ScreenLayout>

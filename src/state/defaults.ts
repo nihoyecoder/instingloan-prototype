@@ -1,4 +1,3 @@
-import { PRICING } from '../config/pricing'
 import type { AppState, Bank, DocEntry, DocId } from './types'
 
 export const DOC_IDS: DocId[] = ['identityProof', 'studentProof', 'incomeProof']
@@ -45,11 +44,11 @@ export function createInitialState(): AppState {
     resumeScreen: 'loan',
     returnTo: null,
     loan: {
-      // No amount is preselected — the student must choose one of PRICING.amountOptions.
+      // Nothing is preselected — the student chooses the amount, purpose and tenure.
       amount: 0,
-      purpose: 'Laptop repair & examination fees',
+      purpose: '',
       purposeNote: '',
-      tenure: PRICING.defaultTenure,
+      tenure: null,
     },
     personal: {
       fullName: 'Ishita Verma',
@@ -75,6 +74,8 @@ export function createInitialState(): AppState {
       monthlyAmount: 12_000,
       startDate: '2026-06-01',
       endDate: '2026-12-31',
+      repaymentSource: '',
+      repaymentNote: '',
     },
     kyc: { panMasked: '', panStatus: 'idle', panCheckedAt: null },
     documents: emptyDocuments(),

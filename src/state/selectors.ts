@@ -1,14 +1,20 @@
+import { isLoanAmountOption } from '../config/pricing'
 import { buildRepaymentPlan, type RepaymentPlan } from '../lib/loan'
 import { formatDisplayDate } from '../lib/date'
 import { formatINR, formatMobileWithCode } from '../lib/format'
-import { STEP_SCREENS, type AppState, type DocFile, type LoanRequest, type ScreenId } from './types'
+import { STEP_SCREENS, type AppState, type DocFile, type Income, type LoanRequest, type ScreenId } from './types'
 
 export const stepIndex = (screen: ScreenId) => (STEP_SCREENS as readonly ScreenId[]).indexOf(screen)
 
-/** One repayment plan for the whole app, derived from the loan request. */
+/** One repayment plan for the whole app, derived from the loan request (empty until amount + tenure are chosen). */
 export const repaymentPlan = (loan: LoanRequest): RepaymentPlan => buildRepaymentPlan(loan.amount, loan.tenure)
 
-export const tenureLabel = (months: number) => `${months} month${months === 1 ? '' : 's'}`
+/** True once both an amount and a tenure have been chosen, so an estimate can be shown. */
+export const hasEstimate = (loan: LoanRequest) => isLoanAmountOption(loan.amount) && loan.tenure !== null
+
+/** "3 months"; "Not chosen" when there's no tenure yet (never "null months"). */
+export const tenureLabel = (months: number | null | undefined) =>
+  months ? `${months} month${months === 1 ? '' : 's'}` : 'Not chosen'
 
 /** What the money is for, as the student described it. */
 export function purposeLabel(loan: LoanRequest): string {
@@ -52,9 +58,18 @@ export function contactLine(state: AppState): string {
   return [state.personal.email, state.personal.mobile ? formatMobileWithCode(state.personal.mobile) : ''].filter(Boolean).join(' · ')
 }
 
+/** How a student without income plans to repay — the note when they chose "Other". */
+export function repaymentSourceLabel(income: Income): string {
+  if (income.repaymentSource === 'Other') return income.repaymentNote.trim() || 'Other'
+  return income.repaymentSource
+}
+
 export function incomeSummary(state: AppState): string {
   const { income } = state
-  if (income.hasIncome === 'no') return 'No personal income declared'
+  if (income.hasIncome === 'no') {
+    const repay = repaymentSourceLabel(income)
+    return repay ? `No personal income · Repaying with: ${repay}` : 'No personal income declared'
+  }
   if (income.hasIncome !== 'yes' || !income.source) return 'Not answered yet'
   return income.monthlyAmount > 0 ? `${income.source} · ${formatINR(income.monthlyAmount)}/month` : income.source
 }

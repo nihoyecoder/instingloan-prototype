@@ -79,6 +79,20 @@ export const INCOME_SOURCES = [
 ] as const
 export type IncomeSource = (typeof INCOME_SOURCES)[number]
 
+/** "How will you repay this loan?" — asked only when the student has no personal income. */
+export const REPAYMENT_SOURCES = [
+  'Family support (parents or guardian)',
+  'Scholarship or stipend starting soon',
+  'Savings',
+  'Part-time or freelance work',
+  'A job I’m starting soon',
+  'Other',
+] as const
+export type RepaymentSource = (typeof REPAYMENT_SOURCES)[number]
+
+export const isRepaymentSource = (value: string): value is RepaymentSource =>
+  (REPAYMENT_SOURCES as readonly string[]).includes(value)
+
 /** Field wording that adapts to the income source the student picks. */
 export const INCOME_COPY: Record<
   IncomeSource,

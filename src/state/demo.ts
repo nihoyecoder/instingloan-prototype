@@ -21,7 +21,8 @@ export function buildDemoDraft(now = Date.now()): AppState {
     furthestStep: 5,
     resumeScreen: 'review',
     failNextUpload: false,
-    loan: { ...state.loan, amount: PRICING.demoAmount },
+    // Ishita's walkthrough choices — set explicitly, as a fresh application starts empty.
+    loan: { amount: PRICING.demoAmount, purpose: 'Laptop repair & examination fees', purposeNote: '', tenure: PRICING.demoTenure },
     kyc: { panMasked: maskPan('ABCDE1234F'), panStatus: 'verified', panCheckedAt: at },
     documents: {
       identityProof: {

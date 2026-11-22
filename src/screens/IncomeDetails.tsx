@@ -5,10 +5,12 @@ import { HelpSheet } from '../components/AppSheets'
 import { DocumentCard } from '../components/DocumentCard'
 import { PageNav } from '../components/PageNav'
 import { ScreenLayout, StepFooter, focusFirstError } from '../components/ScreenLayout'
-import { INCOME_COPY, INCOME_SOURCES, type IncomeSource } from '../config/policy'
+import { INCOME_COPY, INCOME_SOURCES, REPAYMENT_SOURCES, type IncomeSource } from '../config/policy'
 import { cn } from '../lib/cn'
 import { formatDisplayDate } from '../lib/date'
+import { formatINR } from '../lib/format'
 import { useApplication } from '../state/ApplicationProvider'
+import { hasEstimate, repaymentPlan, tenureLabel } from '../state/selectors'
 import type { Income } from '../state/types'
 import { hasErrors, validateIncome, type IncomeKey } from '../state/validation'
 import { AmountInput } from '../ui/AmountInput'
@@ -18,7 +20,16 @@ import { FieldError, FieldLabel, PickerField, TextField, inputFocus, inputShell 
 import { InfoTip } from '../ui/InfoTip'
 import { OptionSheet } from '../ui/OptionSheet'
 
-const ORDER: IncomeKey[] = ['hasIncome', 'source', 'organisation', 'monthlyAmount', 'startDate', 'endDate']
+const ORDER: IncomeKey[] = [
+  'hasIncome',
+  'repaymentSource',
+  'repaymentNote',
+  'source',
+  'organisation',
+  'monthlyAmount',
+  'startDate',
+  'endDate',
+]
 
 /** 04 – Income details (Figma 45:175) · step 3 of 6. Optional: students without income continue freely. */
 export function IncomeDetailsScreen() {
@@ -37,6 +48,9 @@ export function IncomeDetailsScreen() {
   const copy = income.source ? INCOME_COPY[income.source] : null
   const thisYear = new Date().getFullYear()
   const internship = income.source === 'Internship stipend'
+  // For the "How will you repay?" line — only once an amount and tenure are chosen.
+  const plan = repaymentPlan(state.loan)
+  const estimateReady = hasEstimate(state.loan)
 
   const onContinue = () => {
     setAttempted(true)
@@ -91,15 +105,65 @@ export function IncomeDetailsScreen() {
         <FieldError id="income-hasIncome-error">{show('hasIncome')}</FieldError>
 
         {income.hasIncome === 'no' && (
-          <div role="status" className="flex animate-fade-in items-start gap-3 rounded-12 bg-lime-tint p-3">
-            <CircleCheck className="mt-px size-[18px] shrink-0 text-success" strokeWidth={2.2} aria-hidden />
-            <div className="flex flex-col gap-1">
-              <p className="text-[12px] font-bold leading-[15px] text-ink">That’s okay</p>
-              <p className="text-[10px] leading-[13px] text-muted">
-                You can continue without personal income details. Additional information may be requested during
-                assessment.
-              </p>
+          <div className="flex animate-fade-in flex-col gap-3">
+            <div role="status" className="flex items-start gap-3 rounded-12 bg-lime-tint p-3">
+              <CircleCheck className="mt-px size-[18px] shrink-0 text-success" strokeWidth={2.2} aria-hidden />
+              <div className="flex flex-col gap-1">
+                <p className="text-[12px] font-bold leading-[15px] text-ink">That’s okay</p>
+                <p className="text-[10px] leading-[13px] text-muted">
+                  You can apply without personal income. Tell us how you’d manage the repayments.
+                </p>
+              </div>
             </div>
+
+            <div className="flex flex-col gap-1">
+              <div className="flex items-center gap-1.5">
+                <h3 id="income-repay-question" className="text-[14px] font-bold leading-[18px] text-ink">
+                  How will you repay this loan? <span aria-hidden>*</span>
+                </h3>
+                <InfoTip topic="how you’ll repay">
+                  This helps the lender understand how the loan will be repaid. It’s one part of the assessment, not a decision
+                  on its own.
+                </InfoTip>
+              </div>
+              {estimateReady && (
+                <p id="income-repay-emi" className="text-[10px] leading-[13px] text-muted">
+                  Your estimated EMI is {formatINR(plan.emi)} a month for {tenureLabel(plan.tenure)}.
+                </p>
+              )}
+            </div>
+            <RadioCards
+              id="income-repaymentSource"
+              name="repayment-source"
+              stacked
+              labelledBy="income-repay-question"
+              describedBy={
+                [estimateReady && 'income-repay-emi', show('repaymentSource') && 'income-repaymentSource-error'].filter(Boolean).join(' ') ||
+                undefined
+              }
+              value={income.repaymentSource}
+              invalid={Boolean(show('repaymentSource'))}
+              onChange={(repaymentSource) => {
+                update({ repaymentSource })
+                touch('repaymentSource')
+              }}
+              options={REPAYMENT_SOURCES.map((source) => ({ value: source, label: source }))}
+            />
+            <FieldError id="income-repaymentSource-error">{show('repaymentSource')}</FieldError>
+            {income.repaymentSource === 'Other' && (
+              <TextField
+                id="income-repaymentNote"
+                label="How you’ll repay"
+                required
+                value={income.repaymentNote}
+                onValueChange={(repaymentNote) => update({ repaymentNote })}
+                onBlur={() => touch('repaymentNote')}
+                placeholder="e.g. Selling my old laptop"
+                maxLength={80}
+                error={show('repaymentNote')}
+                className="animate-fade-in"
+              />
+            )}
           </div>
         )}
 
@@ -221,8 +285,8 @@ export function IncomeDetailsScreen() {
       />
       <HelpSheet open={sheet === 'help'} onClose={() => setSheet(null)} title="About income details">
         <p>
-          This step is optional. Many students don’t have personal income — you can choose “No” and continue. The lender
-          may ask for more information during assessment.
+          Many students don’t have personal income — you can choose “No” and continue. We’ll just ask how you’d manage the
+          repayments. The lender may ask for more information during assessment.
         </p>
         <p>If you do have income, the details and an optional proof can help the lender understand your repayment capacity.</p>
       </HelpSheet>

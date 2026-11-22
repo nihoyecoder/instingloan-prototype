@@ -1,4 +1,4 @@
-import type { IncomeSource } from '../config/policy'
+import type { IncomeSource, RepaymentSource } from '../config/policy'
 import type { Tenure } from '../config/pricing'
 
 export type ScreenId = 'start' | 'loan' | 'details' | 'income' | 'kyc' | 'bank' | 'review' | 'submitted' | 'track'
@@ -15,7 +15,8 @@ export interface LoanRequest {
   purpose: string
   /** Free text when the purpose is "Other". */
   purposeNote: string
-  tenure: Tenure
+  /** Months — null until the student chooses one. */
+  tenure: Tenure | null
 }
 
 export interface Personal {
@@ -45,6 +46,10 @@ export interface Income {
   monthlyAmount: number
   startDate: string
   endDate: string
+  /** No-income path only: how the student plans to repay. */
+  repaymentSource: RepaymentSource | ''
+  /** Free text when repaymentSource is "Other". */
+  repaymentNote: string
 }
 
 /** Simulated PAN check. Only a masked PAN is ever stored. */

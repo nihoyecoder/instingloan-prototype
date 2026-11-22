@@ -10,7 +10,15 @@ import { cn } from '../lib/cn'
 import { formatDisplayDate } from '../lib/date'
 import { formatINR, formatMobileWithCode } from '../lib/format'
 import { useApplication } from '../state/ApplicationProvider'
-import { incomeSummary, personalSummary, purposeLabel, repaymentPlan, tenureLabel } from '../state/selectors'
+import {
+  hasEstimate,
+  incomeSummary,
+  personalSummary,
+  purposeLabel,
+  repaymentPlan,
+  repaymentSourceLabel,
+  tenureLabel,
+} from '../state/selectors'
 import type { Consents, StepScreenId } from '../state/types'
 import { consentsComplete, submissionBlockers } from '../state/validation'
 import { Checkbox } from '../ui/Controls'
@@ -171,9 +179,9 @@ export function ReviewConsentScreen() {
             ['Requested amount', formatINR(loan.amount)],
             ['Purpose', purposeLabel(loan)],
             ['Tenure', tenureLabel(loan.tenure)],
-            ['Est. EMI', `${formatINR(plan.emi)} / month`],
-            ['Est. interest', `${PRICING.annualRatePercent}% p.a. · ${formatINR(plan.totalInterest)} total`],
-            ['Est. total repayment', formatINR(plan.totalRepayment)],
+            ['Est. EMI', hasEstimate(loan) ? `${formatINR(plan.emi)} / month` : '—'],
+            ['Est. interest', hasEstimate(loan) ? `${PRICING.annualRatePercent}% p.a. · ${formatINR(plan.totalInterest)} total` : '—'],
+            ['Est. total repayment', hasEstimate(loan) ? formatINR(plan.totalRepayment) : '—'],
           ]}
           onEdit={edit('loan')}
           editLabel="Edit loan details"
@@ -230,7 +238,12 @@ export function ReviewConsentScreen() {
                   ],
                   ['Income proof', docName('incomeProof')],
                 ]
-              : [['Personal income', income.hasIncome === 'no' ? 'None declared — that’s okay' : 'Not answered yet']]
+              : income.hasIncome === 'no'
+                ? [
+                    ['Personal income', 'None declared — that’s okay'],
+                    ['Plans to repay with', repaymentSourceLabel(income) || 'Not answered yet'],
+                  ]
+                : [['Personal income', 'Not answered yet']]
           }
           onEdit={edit('income')}
           editLabel="Edit income details"
