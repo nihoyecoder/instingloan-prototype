@@ -1,0 +1,180 @@
+/**
+ * Selection controls from the Quick Loan frames:
+ * - Checkbox: "Unchecked consent checkbox" (45:721) — 14px, 0.7px secondary border.
+ * - RadioCards: "◉ Yes, I have income" / "○ No, I don’t have income" (45:488).
+ * - TenureChips: "Tenure selection" pills (45:351).
+ * - SegmentedTabs: "Repayment view tabs" in the breakdown sheet (50:303).
+ */
+import type { ReactNode } from 'react'
+import { icons } from '../assets/figma'
+import { cn } from '../lib/cn'
+import { Icon } from './Sprite'
+
+export function Checkbox({
+  checked,
+  onChange,
+  children,
+  invalid,
+  className,
+}: {
+  checked: boolean
+  onChange: (checked: boolean) => void
+  children: ReactNode
+  invalid?: boolean
+  className?: string
+}) {
+  return (
+    <label className={cn('flex w-full cursor-pointer items-start gap-2', className)}>
+      <input type="checkbox" className="peer sr-only" checked={checked} onChange={(event) => onChange(event.target.checked)} />
+      <span
+        aria-hidden
+        className={cn(
+          'mt-px flex size-[14px] shrink-0 items-center justify-center rounded-[2px] border-[0.7px] transition-colors duration-150 peer-focus-visible:shadow-[0_0_0_3px_rgba(210,243,107,0.9)]',
+          checked ? 'border-ink bg-lime' : invalid ? 'border-danger bg-card' : 'border-muted bg-card',
+        )}
+      >
+        {checked && <span className="animate-pop-in text-[10px] font-bold leading-none text-black">✓</span>}
+      </span>
+      <span className="min-w-0 flex-1 text-left text-[9px] leading-[12px] text-ink">{children}</span>
+    </label>
+  )
+}
+
+export interface Choice<T extends string> {
+  value: T
+  label: string
+}
+
+export function RadioCards<T extends string>({
+  name,
+  value,
+  options,
+  onChange,
+  labelledBy,
+  invalid,
+  id,
+}: {
+  name: string
+  value: T | ''
+  options: Array<Choice<T>>
+  onChange: (value: T) => void
+  labelledBy?: string
+  invalid?: boolean
+  id?: string
+}) {
+  return (
+    <div id={id} role="radiogroup" aria-labelledby={labelledBy} tabIndex={-1} className="flex flex-wrap gap-3 outline-none">
+      {options.map((option) => {
+        const selected = value === option.value
+        return (
+          <label
+            key={option.value}
+            className={cn(
+              'flex cursor-pointer items-center gap-1 rounded-12 border p-2 transition-colors duration-150 has-[:focus-visible]:shadow-[0_0_0_2px_var(--color-ink)]',
+              selected ? 'border-lime bg-lime-tint' : invalid ? 'border-danger bg-card' : 'border-line bg-card hover:bg-canvas',
+            )}
+          >
+            <input
+              type="radio"
+              name={name}
+              value={option.value}
+              checked={selected}
+              onChange={() => onChange(option.value)}
+              className="sr-only"
+            />
+            <span aria-hidden className="relative size-[15px] shrink-0">
+              <Icon icon={selected ? icons.radioOn : icons.radioOff} className="absolute left-[1.26px] top-[1.26px]" />
+            </span>
+            <span className={cn('whitespace-nowrap text-[11px] leading-[14px] text-ink', selected ? 'font-bold' : 'font-normal')}>
+              {option.label}
+            </span>
+          </label>
+        )
+      })}
+    </div>
+  )
+}
+
+export function TenureChips<T extends number>({
+  value,
+  options,
+  onChange,
+  label,
+  format,
+}: {
+  value: T
+  options: readonly T[]
+  onChange: (value: T) => void
+  label: string
+  format: (value: T) => string
+}) {
+  return (
+    <div role="radiogroup" aria-label={label} className="flex w-full gap-2">
+      {options.map((option) => {
+        const selected = option === value
+        return (
+          <button
+            key={option}
+            type="button"
+            role="radio"
+            aria-checked={selected}
+            onClick={() => onChange(option)}
+            className={cn(
+              'min-w-0 flex-1 rounded-full border-[0.7px] border-line p-2 text-center text-[11px] leading-[14px] text-ink transition-colors duration-150',
+              selected ? 'bg-lime font-bold' : 'bg-card font-normal hover:bg-canvas',
+            )}
+          >
+            {format(option)}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+export function SegmentedTabs<T extends string>({
+  value,
+  options,
+  onChange,
+  label,
+  idPrefix,
+}: {
+  value: T
+  options: Array<Choice<T>>
+  onChange: (value: T) => void
+  label: string
+  idPrefix: string
+}) {
+  return (
+    <div role="tablist" aria-label={label} className="flex h-12 w-full items-center gap-1 rounded-full border border-line bg-card p-1">
+      {options.map((option) => {
+        const selected = option.value === value
+        return (
+          <button
+            key={option.value}
+            id={`${idPrefix}-tab-${option.value}`}
+            type="button"
+            role="tab"
+            aria-selected={selected}
+            aria-controls={`${idPrefix}-panel-${option.value}`}
+            tabIndex={selected ? 0 : -1}
+            onClick={() => onChange(option.value)}
+            onKeyDown={(event) => {
+              if (event.key !== 'ArrowRight' && event.key !== 'ArrowLeft') return
+              const index = options.findIndex((item) => item.value === value)
+              const next = options[(index + (event.key === 'ArrowRight' ? 1 : options.length - 1)) % options.length]
+              onChange(next.value)
+              document.getElementById(`${idPrefix}-tab-${next.value}`)?.focus()
+            }}
+            className={cn(
+              'flex h-10 min-w-0 flex-1 items-center justify-center rounded-full text-[12px] leading-[18px] text-ink transition-colors duration-200',
+              selected ? 'bg-lime font-medium' : 'font-normal hover:bg-canvas',
+            )}
+          >
+            {option.label}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
