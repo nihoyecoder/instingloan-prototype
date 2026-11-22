@@ -1,7 +1,6 @@
 import { BANKS, INCOME_COPY, POLICY } from '../config/policy'
-import { PRICING } from '../config/pricing'
+import { isLoanAmountOption } from '../config/pricing'
 import { ageOn, parseISODate } from '../lib/date'
-import { formatINR } from '../lib/format'
 import type { AppState, Bank, Consents, Income, LoanRequest, Personal, ScreenId, Student } from './types'
 
 export type Errors<K extends string> = Partial<Record<K, string>>
@@ -37,9 +36,8 @@ const normaliseName = (name: string) => name.trim().toLowerCase().replace(/\s+/g
 
 export function validateLoan(loan: LoanRequest): Errors<'amount' | 'purpose' | 'purposeNote'> {
   const errors: Errors<'amount' | 'purpose' | 'purposeNote'> = {}
-  if (!loan.amount) errors.amount = 'Enter the amount you need'
-  else if (loan.amount < PRICING.minAmount) errors.amount = `Enter at least ${formatINR(PRICING.minAmount)}`
-  else if (loan.amount > PRICING.maxAmount) errors.amount = `This prototype accepts up to ${formatINR(PRICING.maxAmount)}`
+  // Only the predefined options are accepted — never an arbitrary amount.
+  if (!isLoanAmountOption(loan.amount)) errors.amount = 'Choose a loan amount'
   if (!loan.purpose) errors.purpose = 'Select the main purpose of the loan'
   if (loan.purpose === 'Other' && loan.purposeNote.trim().length < 3) errors.purposeNote = 'Tell us briefly what the loan is for'
   return errors
@@ -149,8 +147,12 @@ export function submissionBlockers(state: AppState): Blocker[] {
   if (hasErrors(validateIncome(state.income))) blockers.push({ screen: 'income', label: 'Income details' })
   if (hasErrors(validateKyc(state))) blockers.push({ screen: 'kyc', label: 'KYC & documents' })
   if (hasErrors(validateBank(state.bank, state.personal.fullName))) blockers.push({ screen: 'bank', label: 'Bank account' })
-  if (state.documents.incomeProof.status === 'uploading' || state.documents.identityProof.status === 'uploading') {
+  if (state.documents.identityProof.status === 'uploading' || state.documents.studentProof.status === 'uploading') {
     blockers.push({ screen: 'kyc', label: 'An upload is still in progress' })
+  }
+  // Income proof is uploaded on Income details, and only counts when the student has income.
+  if (state.income.hasIncome === 'yes' && state.documents.incomeProof.status === 'uploading') {
+    blockers.push({ screen: 'income', label: 'An upload is still in progress' })
   }
   return blockers
 }

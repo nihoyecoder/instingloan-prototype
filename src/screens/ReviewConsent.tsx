@@ -244,7 +244,6 @@ export function ReviewConsentScreen() {
             ['PAN', kyc.panStatus === 'verified' ? `${kyc.panMasked} · verified (simulated)` : 'Not verified'],
             ['Identity proof', docName('identityProof')],
             ['Student ID', docName('studentProof')],
-            ['Income proof', documents.incomeProof.status === 'uploaded' ? docName('incomeProof') : 'Not added (optional)'],
           ]}
           onEdit={edit('kyc')}
           editLabel="Edit KYC and documents"

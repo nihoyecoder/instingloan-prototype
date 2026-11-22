@@ -17,11 +17,19 @@ export const PRICING = {
   gstOnFeePercent: 18,
   tenureOptions: [3, 6, 12] as const,
   defaultTenure: 3 as const,
-  defaultAmount: 15_000,
-  /** Input bounds for this prototype only — not real lender limits. */
-  minAmount: 1_000,
-  maxAmount: 1_00_000,
+  /**
+   * The only amounts a student can request in this prototype (no free-text entry).
+   * Illustrative options — not lender-approved loan limits. Nothing is preselected.
+   */
+  amountOptions: [1_000, 2_500, 5_000, 7_500, 10_000, 15_000] as const,
+  /** The amount Ishita picks in the walkthrough (used by the presenter's demo shortcuts). */
+  demoAmount: 15_000 as const,
 } as const
 
 export type Tenure = (typeof PRICING.tenureOptions)[number]
+export type LoanAmount = (typeof PRICING.amountOptions)[number]
 export type Pricing = typeof PRICING
+
+/** True when `amount` is one of the selectable options. */
+export const isLoanAmountOption = (amount: number): amount is LoanAmount =>
+  (PRICING.amountOptions as readonly number[]).includes(amount)

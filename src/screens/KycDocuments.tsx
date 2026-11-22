@@ -8,7 +8,7 @@ import { ScreenLayout, StepFooter, focusFirstError } from '../components/ScreenL
 import { POLICY } from '../config/policy'
 import { cn } from '../lib/cn'
 import { useApplication } from '../state/ApplicationProvider'
-import { DOC_IDS } from '../state/defaults'
+import type { DocId } from '../state/types'
 import { hasErrors, validateKyc, validatePan } from '../state/validation'
 import { CheckMarker, FieldError, inputFocus, inputShell } from '../ui/Field'
 import { InfoTip } from '../ui/InfoTip'
@@ -124,6 +124,9 @@ function PanCard({ highlight }: { highlight: boolean }) {
   )
 }
 
+/** The documents uploaded on this screen. Income proof belongs to Income details. */
+const KYC_DOCS: DocId[] = ['identityProof', 'studentProof']
+
 /** 05 – KYC & documents (Figma 45:192) · step 4 of 6. */
 export function KycDocumentsScreen() {
   const { state, actions } = useApplication()
@@ -133,7 +136,7 @@ export function KycDocumentsScreen() {
   const errors = validateKyc(state)
 
   const onContinue = () => {
-    if (DOC_IDS.some((id) => state.documents[id].status === 'uploading') || state.kyc.panStatus === 'checking') {
+    if (KYC_DOCS.some((id) => state.documents[id].status === 'uploading') || state.kyc.panStatus === 'checking') {
       toast('Hang on — still finishing up. Try again in a moment.')
       return
     }
@@ -203,26 +206,13 @@ export function KycDocumentsScreen() {
           }
           why="It confirms you’re currently enrolled — this is a loan for students."
         />
-        <DocumentCard
-          id="incomeProof"
-          icon={sprites.kycIncome}
-          title="Income proof (Optional)"
-          helper={
-            <>
-              Upload your offer letter, internship letter or{' '}
-              <br />
-              latest income proof, if available.
-            </>
-          }
-          why="Optional. It can help the lender understand any income you have — you can submit without it."
-        />
+        {/* Income proof is collected on Income details (only when the student has income), not here. */}
         <DocumentActionsNote />
       </div>
 
       <HelpSheet open={helpOpen} onClose={() => setHelpOpen(false)} title="About KYC & documents">
         <p>
           Your PAN is checked straight away (simulated). Upload one government ID and proof that you’re a current student.
-          Income proof is optional.
         </p>
         <p>
           {POLICY.documents.accepted}, up to {POLICY.documents.maxFileMb} MB each. Uploading doesn’t mean a document is

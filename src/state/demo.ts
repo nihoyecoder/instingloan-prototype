@@ -2,6 +2,7 @@
  * Presenter shortcuts — fictional data only. PANs and account numbers exist
  * here in masked form; "uploaded" documents are just names and sizes.
  */
+import { PRICING } from '../config/pricing'
 import { DEMO_REFERENCE_ID } from '../services/mock'
 import { createInitialState } from './defaults'
 import { maskAccount, maskPan } from './selectors'
@@ -20,6 +21,7 @@ export function buildDemoDraft(now = Date.now()): AppState {
     furthestStep: 5,
     resumeScreen: 'review',
     failNextUpload: false,
+    loan: { ...state.loan, amount: PRICING.demoAmount },
     kyc: { panMasked: maskPan('ABCDE1234F'), panStatus: 'verified', panCheckedAt: at },
     documents: {
       identityProof: {

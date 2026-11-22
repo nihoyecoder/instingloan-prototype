@@ -45,7 +45,8 @@ export function createInitialState(): AppState {
     resumeScreen: 'loan',
     returnTo: null,
     loan: {
-      amount: PRICING.defaultAmount,
+      // No amount is preselected — the student must choose one of PRICING.amountOptions.
+      amount: 0,
       purpose: 'Laptop repair & examination fees',
       purposeNote: '',
       tenure: PRICING.defaultTenure,

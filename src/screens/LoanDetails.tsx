@@ -11,9 +11,8 @@ import { formatINR } from '../lib/format'
 import { useApplication } from '../state/ApplicationProvider'
 import { repaymentPlan, tenureLabel } from '../state/selectors'
 import { hasErrors, validateLoan } from '../state/validation'
-import { AmountInput } from '../ui/AmountInput'
-import { TenureChips } from '../ui/Controls'
-import { FieldError, TextField, inputFocus, inputShell } from '../ui/Field'
+import { AmountOptions, TenureChips } from '../ui/Controls'
+import { FieldError, TextField, inputShell } from '../ui/Field'
 import { InfoTip } from '../ui/InfoTip'
 import { OptionSheet } from '../ui/OptionSheet'
 import { Icon, Sprite } from '../ui/Sprite'
@@ -26,6 +25,7 @@ function FormRow({
   labelId,
   htmlFor,
   why,
+  topic,
   children,
 }: {
   crop: SpriteCrop
@@ -34,6 +34,8 @@ function FormRow({
   labelId: string
   htmlFor?: string
   why: ReactNode
+  /** Names the info tip ("Why we ask for …"); defaults to the label. */
+  topic?: string
   children: ReactNode
 }) {
   const Label = htmlFor ? 'label' : 'p'
@@ -45,7 +47,7 @@ function FormRow({
           <Label id={labelId} htmlFor={htmlFor} className="text-[12px] font-bold leading-[15px] text-ink">
             {label}
           </Label>
-          <InfoTip topic={label.toLowerCase()}>{why}</InfoTip>
+          <InfoTip topic={topic ?? label.toLowerCase()}>{why}</InfoTip>
         </div>
         <p className="text-[10px] leading-[13px] text-muted">{helper}</p>
         {children}
@@ -68,19 +70,19 @@ export function LoanDetailsScreen() {
   const { state, actions } = useApplication()
   const { loan } = state
   const [attempted, setAttempted] = useState(false)
-  const [amountTouched, setAmountTouched] = useState(false)
   const [sheet, setSheet] = useState<'purpose' | 'breakdown' | 'help' | null>(null)
 
   const errors = validateLoan(loan)
-  const amountError = attempted || amountTouched ? errors.amount : undefined
   const plan = repaymentPlan(loan)
-  const estimateReady = !errors.amount
+  // Continue, the estimate and the breakdown all wait for an explicit amount choice.
+  const amountSelected = !errors.amount
+  const estimateReady = amountSelected
 
   const onContinue = () => {
+    if (!amountSelected) return
     setAttempted(true)
     if (hasErrors(errors)) {
       const order = [
-        ['amount', 'loan-amount'],
         ['purpose', 'loan-purpose'],
         ['purposeNote', 'loan-purpose-note'],
       ] as const
@@ -103,7 +105,7 @@ export function LoanDetailsScreen() {
       }
       step={1}
       contentClassName="pt-6 pb-6"
-      footer={<StepFooter onContinue={onContinue} />}
+      footer={<StepFooter onContinue={onContinue} disabled={!amountSelected} />}
     >
       <div className="flex flex-col gap-1">
         <h1 className="text-heading-page text-ink">Loan details</h1>
@@ -115,24 +117,28 @@ export function LoanDetailsScreen() {
       <div className="mt-6 flex flex-col gap-4 p-2">
         <FormRow
           crop={sprites.loanAmount}
-          label="Loan amount"
-          helper="Enter the amount you need."
+          label="Choose your loan amount"
+          helper="Select an amount that suits your immediate financial needs."
           labelId="loan-amount-label"
-          htmlFor="loan-amount"
-          why="We use your requested amount and repayment preference to calculate an estimated loan offer."
+          topic="loan amount"
+          why="We use the amount you choose and your repayment preference to calculate an estimated loan offer. Amounts are fixed options in this prototype."
         >
-          <div className={cn(inputShell, 'p-2', inputFocus, amountError ? 'border-danger' : 'border-line')}>
-            <AmountInput
+          <div className="pt-1">
+            <AmountOptions
               id="loan-amount"
+              labelledBy="loan-amount-label"
+              describedBy={amountSelected ? undefined : 'loan-amount-hint'}
               value={loan.amount}
-              onValueChange={(amount) => actions.updateLoan({ amount })}
-              onBlur={() => setAmountTouched(true)}
-              aria-invalid={amountError ? true : undefined}
-              aria-describedby={amountError ? 'loan-amount-error' : undefined}
-              className="min-w-0 flex-1 bg-transparent text-[14px] font-bold leading-[18px] text-ink outline-none"
+              options={PRICING.amountOptions}
+              onChange={(amount) => actions.updateLoan({ amount })}
+              format={formatINR}
             />
           </div>
-          <FieldError id="loan-amount-error">{amountError}</FieldError>
+          {!amountSelected && (
+            <p id="loan-amount-hint" className="text-[10px] leading-[13px] text-muted">
+              Select an amount to continue.
+            </p>
+          )}
         </FormRow>
 
         <FormRow
@@ -203,9 +209,9 @@ export function LoanDetailsScreen() {
               Estimated repayment
             </h2>
             <p className="text-[10px] leading-[12px] text-muted">
-              This is an indicative estimate based on our{' '}
+              Illustrative prototype calculation based on demo{' '}
               <br />
-              current pricing. The final offer will be shared after{' '}
+              pricing. The final offer will be shared after{' '}
               <br />
               assessment.
             </p>
@@ -242,10 +248,13 @@ export function LoanDetailsScreen() {
       <RepaymentSheet open={sheet === 'breakdown'} onClose={() => setSheet(null)} plan={plan} />
       <HelpSheet open={sheet === 'help'} onClose={() => setSheet(null)} title="About loan details">
         <p>
-          The estimate updates as you change the amount or tenure. It uses a {PRICING.annualRatePercent}% p.a. rate with
-          interest charged monthly on the reducing balance.
+          Choose one of the amounts shown. The estimate updates as soon as you change the amount or tenure. It uses a{' '}
+          {PRICING.annualRatePercent}% p.a. rate with interest charged monthly on the reducing balance.
         </p>
-        <p>It isn’t an approved offer — your final terms depend on the lender’s assessment.</p>
+        <p>
+          It’s an illustrative prototype calculation, not an approved offer. The amount options aren’t lender limits, and your
+          final terms depend on the lender’s assessment.
+        </p>
       </HelpSheet>
     </ScreenLayout>
   )

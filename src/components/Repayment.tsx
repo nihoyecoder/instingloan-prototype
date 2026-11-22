@@ -11,7 +11,7 @@ import { SegmentedTabs } from '../ui/Controls'
 import { Sprite } from '../ui/Sprite'
 
 export const ESTIMATE_DISCLAIMER =
-  'Illustrative estimate using monthly reducing-balance interest. Final loan terms depend on lender assessment.'
+  'Illustrative prototype calculation using monthly reducing-balance interest. Final loan terms depend on lender assessment.'
 
 /** "ⓘ Indicative calculation…" line at the foot of the breakdown sheet (50:331). */
 export function EstimateDisclaimer({ children = ESTIMATE_DISCLAIMER }: { children?: string }) {
@@ -26,7 +26,7 @@ export function EstimateDisclaimer({ children = ESTIMATE_DISCLAIMER }: { childre
 /** Loan cost breakdown tab (50:308 – 50:330). */
 export function CostBreakdown({ plan, title = 'Loan cost breakdown' }: { plan: RepaymentPlan; title?: string }) {
   const rows: Array<[string, string]> = [
-    ['Loan amount', formatINR(plan.principal)],
+    ['Principal amount', formatINR(plan.principal)],
     ['Interest rate (p.a.)', `${plan.annualRatePercent}%`],
     [`Total interest (${tenureLabel(plan.tenure)})`, formatINR(plan.totalInterest)],
     ['Processing fee', formatINR(plan.processingFee)],

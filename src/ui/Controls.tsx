@@ -3,9 +3,11 @@
  * - Checkbox: "Unchecked consent checkbox" (45:721) — 14px, 0.7px secondary border.
  * - RadioCards: "◉ Yes, I have income" / "○ No, I don’t have income" (45:488).
  * - TenureChips: "Tenure selection" pills (45:351).
+ * - AmountOptions: fixed loan amount cards, styled to match TenureChips.
  * - SegmentedTabs: "Repayment view tabs" in the breakdown sheet (50:303).
  */
-import type { ReactNode } from 'react'
+import { useRef, type ReactNode } from 'react'
+import { Check } from 'lucide-react'
 import { icons } from '../assets/figma'
 import { cn } from '../lib/cn'
 import { Icon } from './Sprite'
@@ -124,6 +126,80 @@ export function TenureChips<T extends number>({
               selected ? 'bg-lime font-bold' : 'bg-card font-normal hover:bg-canvas',
             )}
           >
+            {format(option)}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+/**
+ * Loan amount options — a single-choice radio group laid out as a grid of cards.
+ * Styled like TenureChips; the selected card is lime with a tick, so the state
+ * never relies on colour alone. Arrow keys move the selection (roving tabindex).
+ */
+export function AmountOptions<T extends number>({
+  value,
+  options,
+  onChange,
+  format,
+  id,
+  labelledBy,
+  describedBy,
+  columns = 3,
+}: {
+  value: number
+  options: readonly T[]
+  onChange: (value: T) => void
+  format: (value: T) => string
+  id?: string
+  labelledBy?: string
+  describedBy?: string
+  columns?: number
+}) {
+  const refs = useRef<Array<HTMLButtonElement | null>>([])
+  const selectedIndex = options.findIndex((option) => option === value)
+  // With nothing chosen yet, Tab lands on the first option.
+  const tabbable = selectedIndex >= 0 ? selectedIndex : 0
+  const step: Record<string, number> = { ArrowRight: 1, ArrowLeft: -1, ArrowDown: columns, ArrowUp: -columns }
+
+  return (
+    <div
+      id={id}
+      role="radiogroup"
+      aria-labelledby={labelledBy}
+      aria-describedby={describedBy}
+      className="grid w-full gap-2"
+      style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}
+    >
+      {options.map((option, index) => {
+        const selected = option === value
+        return (
+          <button
+            key={option}
+            ref={(element) => {
+              refs.current[index] = element
+            }}
+            type="button"
+            role="radio"
+            aria-checked={selected}
+            tabIndex={index === tabbable ? 0 : -1}
+            onClick={() => onChange(option)}
+            onKeyDown={(event) => {
+              const delta = step[event.key]
+              if (!delta) return
+              event.preventDefault()
+              const next = (index + delta + options.length) % options.length
+              onChange(options[next])
+              refs.current[next]?.focus()
+            }}
+            className={cn(
+              'flex h-10 min-w-0 items-center justify-center gap-1 rounded-12 border-[0.7px] px-1 text-[12px] leading-[15px] text-ink outline-none transition-colors duration-150 focus-visible:shadow-[0_0_0_2px_var(--color-ink)]',
+              selected ? 'border-ink bg-lime font-bold' : 'border-line bg-card font-normal hover:bg-canvas',
+            )}
+          >
+            {selected && <Check aria-hidden className="size-3 shrink-0 animate-pop-in" strokeWidth={3} />}
             {format(option)}
           </button>
         )
